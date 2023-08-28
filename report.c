@@ -214,6 +214,7 @@ static size_t reports(uint8_t *buf, size_t len, uint8_t *finished, char **topicp
      static report_gen_t reportfun = NULL;
 
      if (reportfun == NULL) {
+          puts("calling next report generator");
           reportfun = next_report_gen();
      }
      /* Call reportfun with null buffer to set basename first */
