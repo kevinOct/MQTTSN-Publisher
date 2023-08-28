@@ -547,10 +547,13 @@ void mqttsn_publisher_init(void) {
     /* start emcute thread */
     emcute_pid = thread_create(emcute_stack, sizeof(emcute_stack), EMCUTE_PRIO, THREAD_CREATE_STACKTEST,
                                emcute_thread, NULL, "emcute");
+    puts("a");
 #ifdef MQTTSN_PUBLISHER_THREAD
     /* start publisher thread */
+    puts("b");
     mqpub_pid = thread_create(mqpub_stack, sizeof(mqpub_stack), MQPUB_PRIO, THREAD_CREATE_STACKTEST,
                               mqpub_thread, NULL, "mqpub");
+    puts("c");
     printf("start mqpub: pid %d\n", mqpub_pid);
 #endif /* MQTTSN_PUBLISHER_THREAD */
 }

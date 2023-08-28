@@ -13,6 +13,7 @@
 #include "shell.h"
 #include "net/emcute.h"
 #include "net/ipv6/addr.h"
+#include "net/ipv4/addr.h"
 
 #include "sync_timestamp.h"
 #ifdef MODULE_MQTTSN_PUBLISHER
@@ -77,13 +78,17 @@ static char line_buf[SHELL_DEFAULT_BUFSIZE];
 int main(void)
 {
     ///* the main thread needs a msg queue to be able to run `ping6`*/
+    puts("1");
     msg_init_queue(_main_msg_queue, ARRAY_SIZE(_main_msg_queue));
 
+    puts("2");
     sync_init();
 #ifdef AUTO_INIT_MQTTSN
+    puts("3");
     mqttsn_publisher_init();
 #endif /* AUTO_INIT_MQTTSN */
     /* start shell */
+    puts("4");
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
     /* should never be reached */
     return 0;
