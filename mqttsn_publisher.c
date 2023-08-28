@@ -24,6 +24,8 @@
 
 #include "at24mac.h"
 
+#include "sensordata_buffer.h"
+
 #include "mqttsn_publisher.h"
 #include "report.h"
 #ifdef SNTP_SYNC
@@ -47,6 +49,8 @@
 #define EMCUTE_PRIO         (THREAD_PRIORITY_MAIN + 1)
 
 #define MQPUB_PRIO         (THREAD_PRIORITY_MAIN + 1)
+
+#define SENS_PRIO (THREAD_PRIORITY_MAIN + 1)
 
 #define NUMOFSUBS           (16U)
 
@@ -366,6 +370,7 @@ void mqpub_report_ready(void) {
 static mqttsn_state_t state = MQTTSN_NOT_CONNECTED;
 
 static void _publish_all(int subscribe) {
+    // int i = 0;
     uint32_t linger = 0;
 again:
     while (1) {
@@ -418,6 +423,7 @@ again:
                     goto again;
                 }
 
+                //removeOldestMeasurement(circular_buffer);
             } while (!finished);
             if (subscribe) {
                 emcute_sub_t **sub;
@@ -550,10 +556,80 @@ static void *mqpub_thread(void *arg)
 
 
 kernel_pid_t emcute_pid;
+kernel_pid_t sensordata_pid;
 
 #ifdef MQTTSN_PUBLISHER_THREAD
 kernel_pid_t mqpub_pid;
 #endif /* MQTTSN_PUBLISHER_THREAD */
+
+// Define the measurement struct
+/**
+typedef struct
+{
+    float temperature;
+    float humidity;
+    float air_pressure;
+} Measurement; */
+
+
+// Function to generate random measurement values
+void generate_random_measurement(Measurement *measurement)
+{
+
+    measurement->temperature = (float)(rand() % 100) + 20.0;     // Random temperature between 20 and 120
+    measurement->humidity = (float)(rand() % 50) + 30.0;         // Random humidity between 30 and 80
+    measurement->air_pressure = (float)(rand() % 1000) + 900.0;      // Random pressure between 900 and 1900
+
+}
+
+
+/**
+ * Simulates data generation from the sensor by producing reports and storing it in the memory buffer.
+ */
+void _start_data_simulation(void) {
+
+    Measurement new_measurement;
+    generate_random_measurement(&new_measurement);
+
+    insert_measurement(new_measurement);
+
+    //printMeasurementAtIndex(circular_buffer, index);
+    print_buffer_contents(); 
+}
+
+
+static char sensordata_stack[THREAD_STACKSIZE_DEFAULT];
+
+#define INTERVAL_SEC 360
+// #define MAX_INTERVAL_SEC 60
+
+
+static void *sensordata_thread(void *arg)
+{
+    (void)arg;
+
+    if (initialize_circular_buffer() == 0)
+    {
+        // Handle the error, e.g., log an error message, exit the program, etc.
+        fprintf(stderr, "Buffer initialization failed. Exiting...\n");
+        exit(EXIT_FAILURE);
+    }
+
+    uint64_t sleep_us = INTERVAL_SEC * US_PER_SEC;
+    
+    // Seed the random number generator
+    srand(time(NULL));
+
+    while (1)
+    {
+        printf("Thread executed after %d seconds\n", INTERVAL_SEC);
+        _start_data_simulation();
+        xtimer_usleep(sleep_us);
+    }
+
+    free_circular_buffer();
+    return NULL;
+}
 
 void mqttsn_publisher_init(void) {
 
@@ -576,6 +652,10 @@ void mqttsn_publisher_init(void) {
     puts("c");
     printf("start mqpub: pid %d\n", mqpub_pid);
 #endif /* MQTTSN_PUBLISHER_THREAD */
+
+    sensordata_pid = thread_create(sensordata_stack, sizeof(sensordata_stack), SENS_PRIO, THREAD_CREATE_STACKTEST,
+                                   sensordata_thread, NULL, "sensordata");
+    printf("start sensordata: pid %d\n", sensordata_pid);
 }
 
 typedef enum {
@@ -647,15 +727,33 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
 
     *finished = 0;
 
+    printf("buffer before removing oldest:\n");
+    print_buffer_contents();
+    Measurement measurement = fetch_oldest_measurement();
+
+
+    RECORD_START(s + nread, l - nread);
+    PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[\n");
+    PUTFMT("{\"n\":\"temp\",\"u\":\"celsius\",\"v\":%d},", (int)measurement.temperature);
+    PUTFMT("{\"n\":\"humidity\",\"u\":\"measurement_unit_here\",\"v\":%d},", (int)measurement.humidity);
+    PUTFMT("{\"n\":\"pressure\",\"u\":\"measurement_unit_here\",\"v\":%d}", (int)measurement.air_pressure);
+    PUTFMT("]}");
+    RECORD_END(nread);
+
+/*
     RECORD_START(s + nread, l - nread);
     PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[");
     PUTFMT("{\"n\":\"temp\",\"u\":\"celsius\",\"v\":\"value\"},");
     PUTFMT("{\"n\":\"humidity\",\"u\":\"measurement_unit_here\",\"v\":\"value\"},");
     PUTFMT("{\"n\":\"pressure\",\"u\":\"measurement_unit_here\",\"v\":\"value\"}");
     PUTFMT("]}");
-    RECORD_END(nread);
+    RECORD_END(nread);*/
 
     *finished = 1;
+
+    if (buf != NULL) {
+        remove_oldest_measurement();
+    }
 
     return nread;
 }
