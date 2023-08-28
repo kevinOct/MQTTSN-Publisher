@@ -48,6 +48,9 @@ int app_watchdog_report(uint8_t *buf, size_t len, uint8_t *finished, char **topi
 int mqttsn_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
 int boot_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
 
+// added
+int sensor_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
+
 static size_t preamble(uint8_t *buf, size_t len, char *basename) {
      char *s = (char *) buf;
      size_t l = len;
@@ -88,11 +91,13 @@ typedef enum {
   s_app_watchdog_report,
 #endif
   s_mqttsn_report,
-  s_max_report
+  s_max_report,
+  s_sensor_report // added
 } report_state_t;
 
-report_gen_t next_report_gen(void) {
-     static unsigned int reportno = 0;
+report_gen_t next_report_gen(void)
+{
+     //     static unsigned int reportno = 0;
      static uint8_t done_once = 0;
 
 #ifdef EPCGW
@@ -101,40 +106,44 @@ report_gen_t next_report_gen(void) {
       */
      report_gen_t epcgen = epcgw_report_gen();
      if (epcgen != NULL)
-         return epcgen;
+          return epcgen;
 #endif /* EPCGW */
 
-     if (done_once == 0) {
-       done_once = 1;
-       return(boot_report);
+     if (done_once == 0)
+     {
+          done_once = 1;
+          puts("calling boot");
+          return (boot_report);
      }
 
-     switch (reportno++ % s_max_report) {
-#if defined(MODULE_GNRC_RPL)
-     case s_rpl_report:
-          return(rpl_report);
-#endif
-#if defined(MODULE_SIM7020)
-     case s_sim7020_report:
-          return(sim7020_report);
-#endif
-#if defined(EPCGW)
-     case s_epcgwstats_report:
-         return epcgwstats_report;
-#endif
-#if defined(MODULE_NETSTATS)
-     case s_if_report:
-         return if_report;
-#endif
-#if defined(APP_WATCHDOG)
-     case s_app_watchdog_report:
-         return app_watchdog_report;
-#endif
-     case s_mqttsn_report:
-          return(mqttsn_report);
-     default:
-         printf("Bad report no %d\n", reportno);
-     }
+     return (sensor_report);
+     /**
+          switch (reportno++ % s_max_report) {
+     #if defined(MODULE_GNRC_RPL)
+          case s_rpl_report:
+               return(rpl_report);
+     #endif
+     #if defined(MODULE_SIM7020)
+          case s_sim7020_report:
+               return(sim7020_report);
+     #endif
+     #if defined(EPCGW)
+          case s_epcgwstats_report:
+              return epcgwstats_report;
+     #endif
+     #if defined(MODULE_NETSTATS)
+          case s_if_report:
+              return if_report;
+     #endif
+     #if defined(APP_WATCHDOG)
+          case s_app_watchdog_report:
+              return app_watchdog_report;
+     #endif
+          case s_mqttsn_report:
+               return(mqttsn_report);
+          default:
+              printf("Bad report no %d\n", reportno);
+          } */
      return NULL;
 }
 

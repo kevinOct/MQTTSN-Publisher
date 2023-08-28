@@ -394,6 +394,19 @@ again:
                 char *basename = default_basename;
 
                 publen = makereport(publish_buffer, sizeof(publish_buffer), &finished, &topicstr, &basename);
+                //  if (i != 3)
+                //  {
+                //      puts("current buffer:");
+                //      printf("current report length: %d\n", publen);
+                //      for (size_t i = 0; i < sizeof(publish_buffer); i++)
+                //      {
+                //          printf("%c", publish_buffer[i]);
+                //      }
+                //      printf("\n");
+
+                //     i++;
+                //     goto again;
+                // }
                 if ((tp = mqpub_reg_topic(topicstr)) == NULL) {
                     mqpub_reset();
                     state = MQTTSN_NOT_CONNECTED;
@@ -501,23 +514,30 @@ static void *mqpub_thread(void *arg)
 
         switch (msg.type) {
         case MSG_EVT_ASYNC:
+            puts("async_publish");
             _publish_all(0);
             break;
         case MSG_EVT_PERIODIC:
+            puts("periodic_publish");
 #ifdef SNTP_SYNC
+            puts("sycn periodic");
             sync_periodic();
 #endif /* SNTP_SYNC */
 #ifdef DNS_CACHE_REFRESH
+            puts("A");
             dns_resolve_refresh();
 #endif /* DNS_CACHE_REFRESH */
             if (timeforperiodic()) {
+                puts("B");
                 _publish_all(1);
                 xtimer_now_timex(&last_periodic);
             }
             else 
             if (interval_secs < MQPUB_THREAD_MAX_INTERVAL_SEC) {
+                puts("C");
                 interval_secs <<= 1;
             }
+            puts("D");
             xtimer_set(&interval_timer, interval_secs*US_PER_SEC);
             break;
         default:
@@ -615,6 +635,29 @@ int mqttsn_report(uint8_t *buf, size_t len, uint8_t *finished,
      *finished = 1;
 
      return nread;
+}
+
+int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
+                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep)
+{
+    char *s = (char *)buf;
+    size_t l = len;
+    // static mqttsn_report_state_t state = s_gateway;
+    int nread = 0;
+
+    *finished = 0;
+
+    RECORD_START(s + nread, l - nread);
+    PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[");
+    PUTFMT("{\"n\":\"temp\",\"u\":\"celsius\",\"v\":\"value\"},");
+    PUTFMT("{\"n\":\"humidity\",\"u\":\"measurement_unit_here\",\"v\":\"value\"},");
+    PUTFMT("{\"n\":\"pressure\",\"u\":\"measurement_unit_here\",\"v\":\"value\"}");
+    PUTFMT("]}");
+    RECORD_END(nread);
+
+    *finished = 1;
+
+    return nread;
 }
 
 int mqttsn_stats_cmd(int argc, char **argv) {
