@@ -19,6 +19,7 @@
 #include "periph/uart.h"
 
 #include "net/sim7020.h"
+#include "mqttsn_publisher.h" // added
 
 int sim7020cmd_init(int argc, char **argv) {
   
@@ -184,6 +185,23 @@ int sim7020cmd_send(int argc, char **argv) {
     printf("OK");
   return res;
 }
+
+/**
+ * test code for invoking one-stop publishing by calling mqpub_pubtopic(). Code from Frej & Axel
+*/
+
+int sim7020cmd_topic(int argc, char **argv) {
+  printf("argv[1]: %s\nargv[2]: %s\nargv[3]: %s\n", argv[1], argv[2], argv[3]);
+  printf("atoi: %d", atoi(argv[3]));
+
+  if (argc < 4) {
+      printf("Usage: %s topicstr data len\n", argv[0]);
+      return 1;
+  }
+
+  return mqpub_pubtopic(argv[1], (uint8_t*) argv[2], atoi(argv[3]));
+}
+
 
 int sim7020_test(void);
 int sim7020cmd_test(int argc, char **argv) {
