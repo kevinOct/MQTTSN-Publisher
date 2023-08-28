@@ -5,11 +5,12 @@ APPLICATION = mqttsn_publisher
 BOARD ?= avr-rss2
 
 # This has to be the absolute path to the RIOT base directory:
-#RIOTBASE ?= $(CURDIR)/../../RIOT-OS
-RIOTBASE ?= $(CURDIR)/../../../../../../RIOT-OS/
+RIOTBASE ?= $(CURDIR)/../RIOT-OS
+#RIOTBASE ?= $(CURDIR)/../../../../../../RIOT-OS/
 
 # Network stack to use - sim7020 or gnrc
 NETSTACK ?= sim7020
+CFLAGS += -DSIM7000G
 
 # MQTT-SN publisher config
 #
@@ -22,16 +23,17 @@ CFLAGS += -DMQTTSN_PUBLISHER_THREAD
 # Autolauch at startup
 CFLAGS += -DAUTO_INIT_MQTTSN
 # Use DNS to lookup host names
-USE_DNS ?= false
+#changed false to true
+USE_DNS ?= true
 # Use SNTP to syncrhonize clocks
 CFLAGS += -DSNTP_SYNC
 # MQTT-SN gateway
 # lxc-ha IPv6 static ULA:
-CFLAGS += -DMQTTSN_GATEWAY_HOST=\"fd95:9bba:768f:0:216:3eff:fec6:99db\" 
+#CFLAGS += -DMQTTSN_GATEWAY_HOST=\"fd95:9bba:768f:0:216:3eff:fec6:99db\" 
 #minime.sjodin.net:
 #CFLAGS += -DMQTTSN_GATEWAY_HOST=\"::ffff:82ed:ca25\"
 #lab-pc.ssvl.kth.se
-#CFLAGS += -DMQTTSN_GATEWAY_HOST=\"::ffff:c010:7de8\"
+CFLAGS += -DMQTTSN_GATEWAY_HOST=\"::ffff:c010:7de8\"
 #CFLAGS += -DMQTTSN_GATEWAY_HOST=\"2001:6b0:32:13::232\"
 #CFLAGS += -DMQTTSN_GATEWAY_HOST=\"lab-pc.ssvl.kth.se\"
 CFLAFS += DMQTTSN_GATEWAY_PORT=10000
@@ -45,11 +47,13 @@ USEMODULE += gnrc_netif
 USEMODULE += gnrc_netapi
 
 ifeq ($(NETSTACK), sim7020)
+  USEMODULE += async_at #added
   USEMODULE += sim7020_sock_udp
   ifeq ($(USE_DNS), true)
     USEMODULE += sim7020_sock_dns
   endif
   USEMODULE += auto_init_sim7020
+  CFLAGS += -DCONFIG_AT_SEND_SKIP_ECHO=1 #added
 else ifeq ($(NETSTACK), gnrc)
   ifeq ($(USE_DNS), true)
     USEMODULE += sock_dns
@@ -88,9 +92,12 @@ USEMODULE += netstats_rpl
 endif
 USEMODULE += xtimer
 USEMODULE += at24mac
+#added
+USEMODULE += hashes
+USEMODULE += timex
 
 ifeq ($(NETSTACK), sim7020)
-CFLAGS += -DAT_PRINT_INCOMING=1
+CFLAGS += -DAT_PRINT_INCOMING=1 -DAT_PRINT_OUTGOING=1
 endif
 
 CFLAGS += -DDEBUG_ASSERT_VERBOSE
@@ -112,8 +119,9 @@ ifeq ($(NETSTACK), gnrc)
   # CFLAGS += -DGNRC_RPL_DODAG_CONF_OPTIONAL_ON_JOIN
 
   # DNS with gnrc needs DNS resolver
+  # changed DDNS to DNS
   ifeq ($(USE_DNS), true)
-    CFLAGS += -DDNS_RESOLVER=\"2001:4860:4860::8888\"
+    CFLAGS += -DNS_RESOLVER=\"2001:4860:4860::8888\"
   endif
 endif
 
@@ -140,5 +148,6 @@ include $(RIOTBASE)/Makefile.include
 #
 DEFAULT_CHANNEL=25
 DEFAULT_PAN_ID=0xFEED
-include $(RIOTMAKE)/default-radio-settings.inc.mk
-
+# changed riotmake to riotbase
+include $(RIOTBASE)/makefiles/default-radio-settings.inc.mk
+#include $(RIOTMAKE)/default-radio-settings.inc.mk
