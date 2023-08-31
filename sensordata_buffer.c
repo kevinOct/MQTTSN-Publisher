@@ -73,6 +73,15 @@ void insert_measurement(Measurement new_measurement)
     //printf("Measurement at new insertion: Temperature=%d, Humidity=%d, Air Pressure=%d\n", (int)new_measurement.temperature, (int)new_measurement.humidity, (int)new_measurement.air_pressure);
 }
 
+int get_buffer_count(void) {
+    mutex_lock(&buffer->mutex);
+
+    int count = buffer->count;
+    mutex_unlock(&buffer->mutex);
+
+    return count;
+}
+
 
 Measurement fetch_oldest_measurement(void) {
     mutex_lock(&buffer->mutex);
@@ -80,7 +89,7 @@ Measurement fetch_oldest_measurement(void) {
     if (is_circular_buffer_empty())
     {
         // Handle the case when the buffer is empty (returning a dummy Measurement)
-        Measurement dummy_measurement = {0.0, 0.0, 0.0};
+        Measurement dummy_measurement = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         mutex_unlock(&buffer->mutex);
         return dummy_measurement;
     }
@@ -123,8 +132,25 @@ void print_measurement_at_index(int index)
         int real_index = (buffer->tail + index) % buffer->size;
         Measurement measurement = buffer->data[real_index];
 
-        printf("Measurement at index, real_index: %d, %d, Temperature=%d, Humidity=%d, Air Pressure=%d\n", 
-                index, real_index, (int)measurement.temperature, (int)measurement.humidity, (int)measurement.air_pressure);
+       printf("Measurement at index, real_index: %d, %d, "
+       "Radiation Measurement Interval=%d sec, "
+       "Detection Limit=%d Bq/l, "
+       "Temperature Measurement Interval=%d sec, "
+       "Temperature Measurement Accuracy=%d°C, "
+       "Water Pressure Measurement Interval=%d sec, "
+       "Water Pressure Measurement Accuracy=%d kPa, "
+       "Water pH Measurement Interval=%d sec, "
+       "Conductivity=%d µS/cm\n",
+       index, real_index, 
+       (int)measurement.rn_measurement_interval,
+       (int)measurement.rn_detection_limit,
+       (int)measurement.temp_measurement_interval,
+       (int)measurement.temp_measurement_accuracy,
+       (int)measurement.water_pressure_measurement_interval,
+       (int)measurement.water_pressure_measurement_accuracy,
+       (int)measurement.water_ph_measurement_interval,
+       (int)measurement.conductivity);
+
 
         mutex_unlock(&buffer->mutex);
         return;
@@ -151,10 +177,73 @@ void print_buffer_contents(void)
         int index = (buffer->tail + i) % BUFFER_SIZE;
         Measurement measurement = buffer->data[index];
 
-        printf("Index %d: Temperature=%d, Humidity=%d, Air Pressure=%d\n",
-               index, (int)measurement.temperature, (int)measurement.humidity, (int)measurement.air_pressure);
+        printf("index: %d, "
+       "Radiation Measurement Interval=%d sec, "
+       "Detection Limit=%d Bq/l, "
+       "Temperature Measurement Interval=%d sec, "
+       "Temperature Measurement Accuracy=%d°C, "
+       "Water Pressure Measurement Interval=%d sec, "
+       "Water Pressure Measurement Accuracy=%d kPa, "
+       "Water pH Measurement Interval=%d sec, "
+       "Conductivity=%d µS/cm\n",
+       index, 
+       (int)measurement.rn_measurement_interval,
+       (int)measurement.rn_detection_limit,
+       (int)measurement.temp_measurement_interval,
+       (int)measurement.temp_measurement_accuracy,
+       (int)measurement.water_pressure_measurement_interval,
+       (int)measurement.water_pressure_measurement_accuracy,
+       (int)measurement.water_ph_measurement_interval,
+       (int)measurement.conductivity);
+
     }
     mutex_unlock(&buffer->mutex);
+}
+
+
+void reset_buffer(void) {
+    mutex_lock(&buffer->mutex);
+
+    buffer->head = 0;
+    buffer->tail = 0;
+    buffer->count = 0;
+
+    mutex_unlock(&buffer->mutex);
+}
+
+
+Measurement* retrieve_all_measurements(void) {
+    mutex_lock(&buffer->mutex);
+
+    if (is_circular_buffer_empty())
+    {
+        printf("Buffer empty. Cannot retrieve elements");
+        mutex_unlock(&buffer->mutex);
+        return NULL;
+    }
+
+    Measurement* measurements = (Measurement*)malloc(sizeof(Measurement) * buffer->count);
+
+    if (measurements == NULL)
+    {
+        printf("Measurement array allocation failed");
+        mutex_unlock(&buffer->mutex);
+        return NULL;
+    }
+
+    for (int i = 0; i < buffer->count; i++)
+    {
+        int real_index = (buffer->tail + i) % buffer->size;
+        measurements[i] = buffer->data[real_index];
+    }
+    
+    buffer->head = 0;
+    buffer->tail = 0;
+    buffer->count = 0;
+
+    mutex_unlock(&buffer->mutex);
+
+    return measurements;
 }
 
 

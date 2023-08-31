@@ -562,24 +562,17 @@ kernel_pid_t sensordata_pid;
 kernel_pid_t mqpub_pid;
 #endif /* MQTTSN_PUBLISHER_THREAD */
 
-// Define the measurement struct
-/**
-typedef struct
-{
-    float temperature;
-    float humidity;
-    float air_pressure;
-} Measurement; */
-
-
-// Function to generate random measurement values
+// Generate random measurements
 void generate_random_measurement(Measurement *measurement)
 {
-
-    measurement->temperature = (float)(rand() % 100) + 20.0;     // Random temperature between 20 and 120
-    measurement->humidity = (float)(rand() % 50) + 30.0;         // Random humidity between 30 and 80
-    measurement->air_pressure = (float)(rand() % 1000) + 900.0;      // Random pressure between 900 and 1900
-
+    measurement->rn_measurement_interval = (float)(rand() % 1000) + 100.0;     
+    measurement->rn_detection_limit = (float)(rand() % 30) + 1.0;         
+    measurement->temp_measurement_interval = (float)(rand() % 1000) + 100.0;      
+    measurement->temp_measurement_accuracy = (float)(rand() % 110) + 1.0;
+    measurement->water_pressure_measurement_interval = (float)(rand() % 1000) + 100.0;
+    measurement->water_pressure_measurement_accuracy = (float)(rand() % 10) + 1.0;
+    measurement->water_ph_measurement_interval = (float)(rand() % 30) + 11.0;
+    measurement->conductivity = (float)(rand() % 100) + 1.0;
 }
 
 
@@ -717,44 +710,118 @@ int mqttsn_report(uint8_t *buf, size_t len, uint8_t *finished,
      return nread;
 }
 
+typedef enum {
+    s_sensor, s_rn, s_temperature, s_water, s_conductivity} sensor_report_state_t;
+
 int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
                   __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep)
 {
     char *s = (char *)buf;
     size_t l = len;
-    // static mqttsn_report_state_t state = s_gateway;
+    static sensor_report_state_t state = s_rn;
     int nread = 0;
 
     *finished = 0;
 
-    printf("buffer before removing oldest:\n");
-    print_buffer_contents();
-    Measurement measurement = fetch_oldest_measurement();
-
-
-    RECORD_START(s + nread, l - nread);
-    PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[\n");
-    PUTFMT("{\"n\":\"temp\",\"u\":\"celsius\",\"v\":%d},", (int)measurement.temperature);
-    PUTFMT("{\"n\":\"humidity\",\"u\":\"measurement_unit_here\",\"v\":%d},", (int)measurement.humidity);
-    PUTFMT("{\"n\":\"pressure\",\"u\":\"measurement_unit_here\",\"v\":%d}", (int)measurement.air_pressure);
-    PUTFMT("]}");
-    RECORD_END(nread);
-
-/*
-    RECORD_START(s + nread, l - nread);
-    PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[");
-    PUTFMT("{\"n\":\"temp\",\"u\":\"celsius\",\"v\":\"value\"},");
-    PUTFMT("{\"n\":\"humidity\",\"u\":\"measurement_unit_here\",\"v\":\"value\"},");
-    PUTFMT("{\"n\":\"pressure\",\"u\":\"measurement_unit_here\",\"v\":\"value\"}");
-    PUTFMT("]}");
-    RECORD_END(nread);*/
-
-    *finished = 1;
-
+    
     if (buf != NULL) {
-        remove_oldest_measurement();
+
+        printf("buffer before removing oldest:\n");
+        print_buffer_contents();
+
+        Measurement measurement;
+        while (get_buffer_count() != 0)
+        {
+            measurement = fetch_oldest_measurement();
+
+            switch (state)
+            {
+            case s_sensor:
+                RECORD_START(s + nread, l - nread);
+                PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[");
+                PUTFMT(",{\"n\":\"sensor_name:\",\"v\":\"sensor_name_placeholder\"}");
+                PUTFMT(",{\"n\":\"sensor_id:\",\"v\":\"sensor_id_placeholder\"}");
+                PUTFMT(",{\"n\":\"sensor_time:\",\"t\":\"sensor_time_placeholder\"}");
+                PUTFMT("]}");
+                RECORD_END(nread);
+                state = s_rn;
+
+            case s_rn:
+                RECORD_START(s + nread, l - nread);
+                PUTFMT(",{\"n\":\"Rn parameters\",\"vj\":[");
+                PUTFMT("{\"n\":\"Rn measurement interval\",\"u\":\"seconds\",\"v\":%d},", (int)measurement.rn_measurement_interval);
+                PUTFMT("{\"n\":\"Rn detection limit\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_detection_limit);
+                PUTFMT("]}");
+                RECORD_END(nread);
+                state = s_temperature;
+
+            case s_temperature:
+                RECORD_START(s + nread, l - nread);
+                PUTFMT(",{\"n\":\"Temperature parameters\",\"vj\":[");
+                PUTFMT("{\"n\":\"Temperature measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.temp_measurement_interval);
+                PUTFMT("{\"n\":\"Temperature measurement accuracy\",\"u\":\"degrees celsius\",\"v\":%d}", (int)measurement.temp_measurement_accuracy); 
+                PUTFMT("]}");
+                RECORD_END(nread);
+                state = s_water;
+
+            case s_water:
+                RECORD_START(s + nread, l - nread);
+                PUTFMT(",{\"n\":\"Water parameters\",\"vj\":[");
+                PUTFMT("{\"n\":\"Water pressure measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_pressure_measurement_interval);    
+                PUTFMT("{\"n\":\"Water pressure measurement accuracy\",\"u\":\"(kPa)/kiloPascal\",\"v\":%d}", (int)measurement.water_pressure_measurement_accuracy);    
+                PUTFMT("{\"n\":\"Water acidity(pH) measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_ph_measurement_interval);    
+                PUTFMT("]}");
+                RECORD_END(nread);
+                state = s_conductivity;
+
+            case s_conductivity:
+                RECORD_START(s + nread, l - nread);
+                PUTFMT("{\"n\":\"Conductivity\",\"u\":\"(µS/cm)/microseimens per centimeter\",\"v\":%d}", (int)measurement.conductivity);    
+                RECORD_END(nread);
+                state = s_sensor;
+
+                remove_oldest_measurement();
+            }
+            
+        }
+
+        reset_buffer();
     }
 
+
+    /**
+    if (buf != NULL) {
+
+        printf("buffer before removing oldest:\n");
+        print_buffer_contents();
+        Measurement measurement;
+
+        RECORD_START(s + nread, l - nread);
+        PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[\n");
+
+        while (get_buffer_count() != 0) {
+            measurement = fetch_oldest_measurement();
+
+            PUTFMT("{\"n\":\"Rn measurement interval\",\"u\":\"seconds\",\"v\":%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{\"n\":\"Rn detection limit\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{\"n\":\"Temperature measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.temp_measurement_interval);
+            PUTFMT("{\"n\":\"Temperature measurement accuracy\",\"u\":\"degrees celsius\",\"v\":%d}", (int)measurement.temp_measurement_accuracy); 
+            PUTFMT("{\"n\":\"Water pressure measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_pressure_measurement_interval);    
+            PUTFMT("{\"n\":\"Water pressure measurement accuracy\",\"u\":\"(kPa)/kiloPascal\",\"v\":%d}", (int)measurement.water_pressure_measurement_accuracy);    
+            PUTFMT("{\"n\":\"Water acidity(pH) measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_ph_measurement_interval);    
+            PUTFMT("{\"n\":\"Conductivity\",\"u\":\"(µS/cm)/microseimens per centimeter\",\"v\":%d}", (int)measurement.conductivity);    
+
+            remove_oldest_measurement();
+        }
+
+        PUTFMT("]}");
+        RECORD_END(nread);
+
+        reset_buffer();
+    }
+    */
+
+    *finished = 1;
     return nread;
 }
 

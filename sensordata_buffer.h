@@ -8,9 +8,14 @@
 // Define the Measurement struct
 typedef struct
 {
-    float temperature;
-    float humidity;
-    float air_pressure;
+    float rn_measurement_interval;              // sec
+    float rn_detection_limit;                   // (Bq/l) becquerel per liter
+    float temp_measurement_interval;            // sec
+    float temp_measurement_accuracy;            // degrees Celsius
+    float water_pressure_measurement_interval;  // sec        
+    float water_pressure_measurement_accuracy;  // (kPa) kiloPascal
+    float water_ph_measurement_interval;        // sec
+    float conductivity;                         // (µS/cm) microseimens per centimeter
 } Measurement;
 
 // Define the CircularBuffer struct
@@ -34,5 +39,8 @@ Measurement fetch_oldest_measurement(void);
 void remove_oldest_measurement(void);
 void print_measurement_at_index(int index);
 void print_buffer_contents(void);
+Measurement* retrieve_all_measurements(void);
+int get_buffer_count(void);
+void reset_buffer(void);
 
 #endif /* CIRCULAR_BUFFER_H */
