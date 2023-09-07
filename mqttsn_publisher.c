@@ -69,6 +69,7 @@ static char mqpub_stack[THREAD_STACKSIZE_DEFAULT + 384];
 #endif
 static char emcute_stack[THREAD_STACKSIZE_DEFAULT + 128];
 
+static char sub_topicstr[MQPUB_TOPIC_LENGTH];
 static char default_topicstr[MQPUB_TOPIC_LENGTH];
 static char default_basename[MQPUB_BASENAME_LENGTH];
 emcute_topic_t emcute_topic;
@@ -160,6 +161,10 @@ static void _init_default_topicstr(void) {
     char nodeidstr[20];
     (void) get_nodeid(nodeidstr, sizeof(nodeidstr));
     mqpub_init_topic(default_topicstr, sizeof(default_topicstr), nodeidstr, "/sensors");
+
+    // Create topic string for subscription topic
+    mqpub_init_topic(sub_topicstr, sizeof(default_topicstr), nodeidstr, "/broker_requests");
+
 }
 
 size_t mqpub_init_basename(char *basename, size_t basenamelen, char *nodeid) {
@@ -297,6 +302,16 @@ int mqpub_start_subscription(char *topic, emcute_cb_t cb) {
     return ENOMEM;
 }
 
+void mqpub_end_subscription(void) {
+    emcute_sub_t **sub;
+    for (sub = &subscriptions[0]; sub <= &subscriptions[MQTTSN_MAX_SUBSCRIPTIONS-1]; sub++)
+    {
+        if (*sub) {
+            free(*sub);
+            *sub = NULL;
+        }
+    }
+}
 
 int mqpub_discon(void) {
     LEDON;
@@ -369,6 +384,41 @@ void mqpub_report_ready(void) {
 
 static mqttsn_state_t state = MQTTSN_NOT_CONNECTED;
 
+uint8_t subscribe_buffer[MQTTSN_BUFFER_SIZE];
+void _check_sub(const emcute_topic_t *topic, void *data, size_t len) {
+    printf("Received message on topic: %s\n", topic->name);
+
+    /**
+     * the cases are defined here. check these cases in the linger method in publish_all().
+    */
+
+    if (data != NULL && len <= MQTTSN_BUFFER_SIZE) {
+
+        char* token = strtok((char*)data, " ");
+
+        while (token != NULL) {
+            printf("%s\n", token);
+            if (strcmp(token, "fetch") == 0) {
+                token = strtok(NULL, " ");
+                if (strcmp(token, "sensor_spec_data") == 0) {
+                    report_gen_state= s_sensor_spec_report;
+                }
+
+                else if (strcmp(token, "controller_spec_data") == 0) {
+                    report_gen_state = s_controller_spec_report;
+                }
+                else printf("Invalid 'fetch' arg: %s\n", token);
+            }
+            else {
+                printf("Invalid command: %s\n", token);
+            }
+            token = strtok(NULL, " ");
+        }
+    } else {
+        printf("No message data received.\n");
+    }
+}
+
 static void _publish_all(int subscribe) {
     // int i = 0;
     uint32_t linger = 0;
@@ -395,23 +445,16 @@ again:
             do {
                 size_t publen;
                 mqpub_topic_t *tp;
-                char *topicstr = default_topicstr;
+                char *topicstr;
                 char *basename = default_basename;
 
-                publen = makereport(publish_buffer, sizeof(publish_buffer), &finished, &topicstr, &basename);
-                //  if (i != 3)
-                //  {
-                //      puts("current buffer:");
-                //      printf("current report length: %d\n", publen);
-                //      for (size_t i = 0; i < sizeof(publish_buffer); i++)
-                //      {
-                //          printf("%c", publish_buffer[i]);
-                //      }
-                //      printf("\n");
+                if (report_gen_state == s_sensor_spec_report || report_gen_state == s_controller_spec_report)
+                {
+                    topicstr = sub_topicstr;
+                }
+                else { topicstr = default_topicstr; }
 
-                //     i++;
-                //     goto again;
-                // }
+                publen = makereport(publish_buffer, sizeof(publish_buffer), &finished, &topicstr, &basename);
                 if ((tp = mqpub_reg_topic(topicstr)) == NULL) {
                     mqpub_reset();
                     state = MQTTSN_NOT_CONNECTED;
@@ -422,14 +465,24 @@ again:
                     state = MQTTSN_NOT_CONNECTED;
                     goto again;
                 }
-
-                //removeOldestMeasurement(circular_buffer);
             } while (!finished);
             if (subscribe) {
-                emcute_sub_t **sub;
+
+                emcute_sub_t **sub;                
+                char *topicstr = sub_topicstr;
+                emcute_cb_t callback = _check_sub; // test example
+                
+                if ( mqpub_start_subscription(topicstr, callback) != 0) {
+                    printf("mqpub_start_sub returns_ %d\n", i);
+                    puts("No subscription");
+                    mqpub_reset();
+                    state = MQTTSN_NOT_CONNECTED;
+                    return;
+                }
                 for (sub = &subscriptions[0]; sub <= &subscriptions[MQTTSN_MAX_SUBSCRIPTIONS-1]; sub++) {
                     if (*sub) {
                         if ((res = emcute_sub(*sub, EMCUTE_QOS_1)) < 0) {
+                            mqpub_end_subscription();
                             mqpub_reset();
                             state = MQTTSN_NOT_CONNECTED;
                             return;
@@ -449,12 +502,20 @@ again:
 #define LINGER_SEC 6
         case MQTTSN_LINGER:
         {
+            if (report_gen_state == s_sensor_spec_report || report_gen_state == s_controller_spec_report) {
+                mqpub_end_subscription();
+                mqpub_reset();
+                state = MQTTSN_NOT_CONNECTED;
+                goto again;
+            }
+
             uint32_t now = xtimer_now_usec();
             if ((now - linger)/US_PER_SEC >= LINGER_SEC) {
+                mqpub_end_subscription();
                 mqpub_discon();
                 state = MQTTSN_DISCONNECTED;
-                return;
-            }
+                return;   
+            }    
         }
         break;
         case MQTTSN_DISCONNECTED:
@@ -708,6 +769,46 @@ int mqttsn_report(uint8_t *buf, size_t len, uint8_t *finished,
      *finished = 1;
 
      return nread;
+}
+
+int sensor_spec_report(uint8_t *buf, size_t len, uint8_t *finished,
+                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep) 
+{
+    char *s = (char *)buf;
+    size_t l = len;
+    int nread = 0;
+
+    *finished = 0;
+
+    puts("Publishing sensor_boot_report");
+
+    RECORD_START(s + nread, l - nread);
+    PUTFMT(",{\"n\": \"sensor_boot_report\",\"vs\":\"_data_placeholder\"}");
+    RECORD_END(nread);
+
+
+    *finished = 1;
+    return nread;
+}
+
+int controller_spec_report(uint8_t *buf, size_t len, uint8_t *finished,
+                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep) 
+{
+    char *s = (char *)buf;
+    size_t l = len;
+    int nread = 0;
+
+    *finished = 0;
+
+    puts("Publishing controller_boot_report");
+
+    RECORD_START(s + nread, l - nread);
+    PUTFMT(",{\"n\": \"controller_boot_report\",\"vs\":\"_data_placeholder\"}");
+    RECORD_END(nread);
+
+
+    *finished = 1;
+    return nread;
 }
 
 typedef enum {

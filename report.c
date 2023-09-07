@@ -50,6 +50,8 @@ int boot_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char
 
 // added
 int sensor_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
+int sensor_spec_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
+int controller_spec_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
 
 static size_t preamble(uint8_t *buf, size_t len, char *basename) {
      char *s = (char *) buf;
@@ -70,30 +72,8 @@ static size_t preamble(uint8_t *buf, size_t len, char *basename) {
      return (nread);
 }
 
-/*
- * Report scheduler -- return report generator function to use next
- */
 
-typedef enum {
-#if defined(MODULE_GNRC_RPL)
-  s_rpl_report,
-#endif
-#if defined(MODULE_SIM7020)
-  s_sim7020_report,
-#endif
-#if defined(EPCGW)
-  s_epcgwstats_report,
-#endif
-#if defined(MODULE_NETSTATS)
-  s_if_report,
-#endif
-#if defined(APP_WATCHDOG)
-  s_app_watchdog_report,
-#endif
-  s_mqttsn_report,
-  s_max_report,
-  s_sensor_report // added
-} report_state_t;
+report_state_t report_gen_state = s_sensor_report;
 
 report_gen_t next_report_gen(void)
 {
@@ -116,7 +96,26 @@ report_gen_t next_report_gen(void)
           return (boot_report);
      }
 
-     return (sensor_report);
+     switch (report_gen_state)
+     {
+     case s_sensor_report:
+          return (sensor_report);
+     
+     case s_sensor_spec_report:
+          report_gen_state = s_sensor_report;
+          puts("return sensor boot report here");
+          return (sensor_spec_report);
+     
+     case s_controller_spec_report:
+          report_gen_state = s_sensor_report;
+          puts("returns controller boot report here");
+          return (controller_spec_report);
+
+     default:
+          return (sensor_report);
+
+     }
+
      /**
           switch (reportno++ % s_max_report) {
      #if defined(MODULE_GNRC_RPL)

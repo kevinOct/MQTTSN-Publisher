@@ -92,3 +92,31 @@ typedef int (* report_gen_t)(uint8_t *buf, size_t len, uint8_t *finished, char *
 
 size_t makereport(uint8_t *buffer, size_t len, uint8_t *finished, char **topicp, char **basenamep);
 
+/*
+ * Report scheduler -- return report generator function to use next
+ */
+
+typedef enum {
+#if defined(MODULE_GNRC_RPL)
+  s_rpl_report,
+#endif
+#if defined(MODULE_SIM7020)
+  s_sim7020_report,
+#endif
+#if defined(EPCGW)
+  s_epcgwstats_report,
+#endif
+#if defined(MODULE_NETSTATS)
+  s_if_report,
+#endif
+#if defined(APP_WATCHDOG)
+  s_app_watchdog_report,
+#endif
+  s_mqttsn_report,
+  s_max_report,
+  s_sensor_report, // added
+  s_sensor_spec_report,
+  s_controller_spec_report,
+} report_state_t;
+
+extern report_state_t report_gen_state;
