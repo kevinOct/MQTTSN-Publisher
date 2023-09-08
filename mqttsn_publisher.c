@@ -23,8 +23,7 @@
 #include "xtimer.h"
 
 #include "at24mac.h"
-
-#include "sensordata_buffer.h"
+#include "sensor.h"
 
 #include "mqttsn_publisher.h"
 #include "report.h"
@@ -68,6 +67,7 @@ mqttsn_stats_t mqttsn_stats;
 static char mqpub_stack[THREAD_STACKSIZE_DEFAULT + 384];
 #endif
 static char emcute_stack[THREAD_STACKSIZE_DEFAULT + 128];
+static char sensordata_stack[THREAD_STACKSIZE_DEFAULT];
 
 static char sub_topicstr[MQPUB_TOPIC_LENGTH];
 static char default_topicstr[MQPUB_TOPIC_LENGTH];
@@ -384,7 +384,6 @@ void mqpub_report_ready(void) {
 
 static mqttsn_state_t state = MQTTSN_NOT_CONNECTED;
 
-uint8_t subscribe_buffer[MQTTSN_BUFFER_SIZE];
 void _check_sub(const emcute_topic_t *topic, void *data, size_t len) {
     printf("Received message on topic: %s\n", topic->name);
 
@@ -473,7 +472,6 @@ again:
                 emcute_cb_t callback = _check_sub; // test example
                 
                 if ( mqpub_start_subscription(topicstr, callback) != 0) {
-                    printf("mqpub_start_sub returns_ %d\n", i);
                     puts("No subscription");
                     mqpub_reset();
                     state = MQTTSN_NOT_CONNECTED;
@@ -623,41 +621,6 @@ kernel_pid_t sensordata_pid;
 kernel_pid_t mqpub_pid;
 #endif /* MQTTSN_PUBLISHER_THREAD */
 
-// Generate random measurements
-void generate_random_measurement(Measurement *measurement)
-{
-    measurement->rn_measurement_interval = (float)(rand() % 1000) + 100.0;     
-    measurement->rn_detection_limit = (float)(rand() % 30) + 1.0;         
-    measurement->temp_measurement_interval = (float)(rand() % 1000) + 100.0;      
-    measurement->temp_measurement_accuracy = (float)(rand() % 110) + 1.0;
-    measurement->water_pressure_measurement_interval = (float)(rand() % 1000) + 100.0;
-    measurement->water_pressure_measurement_accuracy = (float)(rand() % 10) + 1.0;
-    measurement->water_ph_measurement_interval = (float)(rand() % 30) + 11.0;
-    measurement->conductivity = (float)(rand() % 100) + 1.0;
-}
-
-
-/**
- * Simulates data generation from the sensor by producing reports and storing it in the memory buffer.
- */
-void _start_data_simulation(void) {
-
-    Measurement new_measurement;
-    generate_random_measurement(&new_measurement);
-
-    insert_measurement(new_measurement);
-
-    //printMeasurementAtIndex(circular_buffer, index);
-    print_buffer_contents(); 
-}
-
-
-static char sensordata_stack[THREAD_STACKSIZE_DEFAULT];
-
-#define INTERVAL_SEC 360
-// #define MAX_INTERVAL_SEC 60
-
-
 static void *sensordata_thread(void *arg)
 {
     (void)arg;
@@ -769,161 +732,6 @@ int mqttsn_report(uint8_t *buf, size_t len, uint8_t *finished,
      *finished = 1;
 
      return nread;
-}
-
-int sensor_spec_report(uint8_t *buf, size_t len, uint8_t *finished,
-                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep) 
-{
-    char *s = (char *)buf;
-    size_t l = len;
-    int nread = 0;
-
-    *finished = 0;
-
-    puts("Publishing sensor_boot_report");
-
-    RECORD_START(s + nread, l - nread);
-    PUTFMT(",{\"n\": \"sensor_boot_report\",\"vs\":\"_data_placeholder\"}");
-    RECORD_END(nread);
-
-
-    *finished = 1;
-    return nread;
-}
-
-int controller_spec_report(uint8_t *buf, size_t len, uint8_t *finished,
-                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep) 
-{
-    char *s = (char *)buf;
-    size_t l = len;
-    int nread = 0;
-
-    *finished = 0;
-
-    puts("Publishing controller_boot_report");
-
-    RECORD_START(s + nread, l - nread);
-    PUTFMT(",{\"n\": \"controller_boot_report\",\"vs\":\"_data_placeholder\"}");
-    RECORD_END(nread);
-
-
-    *finished = 1;
-    return nread;
-}
-
-typedef enum {
-    s_sensor, s_rn, s_temperature, s_water, s_conductivity} sensor_report_state_t;
-
-int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
-                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep)
-{
-    char *s = (char *)buf;
-    size_t l = len;
-    static sensor_report_state_t state = s_rn;
-    int nread = 0;
-
-    *finished = 0;
-
-    
-    if (buf != NULL) {
-
-        printf("buffer before removing oldest:\n");
-        print_buffer_contents();
-
-        Measurement measurement;
-        while (get_buffer_count() != 0)
-        {
-            measurement = fetch_oldest_measurement();
-
-            switch (state)
-            {
-            case s_sensor:
-                RECORD_START(s + nread, l - nread);
-                PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[");
-                PUTFMT(",{\"n\":\"sensor_name:\",\"v\":\"sensor_name_placeholder\"}");
-                PUTFMT(",{\"n\":\"sensor_id:\",\"v\":\"sensor_id_placeholder\"}");
-                PUTFMT(",{\"n\":\"sensor_time:\",\"t\":\"sensor_time_placeholder\"}");
-                PUTFMT("]}");
-                RECORD_END(nread);
-                state = s_rn;
-
-            case s_rn:
-                RECORD_START(s + nread, l - nread);
-                PUTFMT(",{\"n\":\"Rn parameters\",\"vj\":[");
-                PUTFMT("{\"n\":\"Rn measurement interval\",\"u\":\"seconds\",\"v\":%d},", (int)measurement.rn_measurement_interval);
-                PUTFMT("{\"n\":\"Rn detection limit\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_detection_limit);
-                PUTFMT("]}");
-                RECORD_END(nread);
-                state = s_temperature;
-
-            case s_temperature:
-                RECORD_START(s + nread, l - nread);
-                PUTFMT(",{\"n\":\"Temperature parameters\",\"vj\":[");
-                PUTFMT("{\"n\":\"Temperature measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.temp_measurement_interval);
-                PUTFMT("{\"n\":\"Temperature measurement accuracy\",\"u\":\"degrees celsius\",\"v\":%d}", (int)measurement.temp_measurement_accuracy); 
-                PUTFMT("]}");
-                RECORD_END(nread);
-                state = s_water;
-
-            case s_water:
-                RECORD_START(s + nread, l - nread);
-                PUTFMT(",{\"n\":\"Water parameters\",\"vj\":[");
-                PUTFMT("{\"n\":\"Water pressure measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_pressure_measurement_interval);    
-                PUTFMT("{\"n\":\"Water pressure measurement accuracy\",\"u\":\"(kPa)/kiloPascal\",\"v\":%d}", (int)measurement.water_pressure_measurement_accuracy);    
-                PUTFMT("{\"n\":\"Water acidity(pH) measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_ph_measurement_interval);    
-                PUTFMT("]}");
-                RECORD_END(nread);
-                state = s_conductivity;
-
-            case s_conductivity:
-                RECORD_START(s + nread, l - nread);
-                PUTFMT("{\"n\":\"Conductivity\",\"u\":\"(µS/cm)/microseimens per centimeter\",\"v\":%d}", (int)measurement.conductivity);    
-                RECORD_END(nread);
-                state = s_sensor;
-
-                remove_oldest_measurement();
-            }
-            
-        }
-
-        reset_buffer();
-    }
-
-
-    /**
-    if (buf != NULL) {
-
-        printf("buffer before removing oldest:\n");
-        print_buffer_contents();
-        Measurement measurement;
-
-        RECORD_START(s + nread, l - nread);
-        PUTFMT(",{\"n\":\"sensor_data\",\"vj\":[\n");
-
-        while (get_buffer_count() != 0) {
-            measurement = fetch_oldest_measurement();
-
-            PUTFMT("{\"n\":\"Rn measurement interval\",\"u\":\"seconds\",\"v\":%d},", (int)measurement.rn_measurement_interval);
-            PUTFMT("{\"n\":\"Rn detection limit\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_detection_limit);
-            PUTFMT("{\"n\":\"Temperature measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.temp_measurement_interval);
-            PUTFMT("{\"n\":\"Temperature measurement accuracy\",\"u\":\"degrees celsius\",\"v\":%d}", (int)measurement.temp_measurement_accuracy); 
-            PUTFMT("{\"n\":\"Water pressure measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_pressure_measurement_interval);    
-            PUTFMT("{\"n\":\"Water pressure measurement accuracy\",\"u\":\"(kPa)/kiloPascal\",\"v\":%d}", (int)measurement.water_pressure_measurement_accuracy);    
-            PUTFMT("{\"n\":\"Water acidity(pH) measurement interval\",\"u\":\"seconds\",\"v\":%d}", (int)measurement.water_ph_measurement_interval);    
-            PUTFMT("{\"n\":\"Conductivity\",\"u\":\"(µS/cm)/microseimens per centimeter\",\"v\":%d}", (int)measurement.conductivity);    
-
-            remove_oldest_measurement();
-        }
-
-        PUTFMT("]}");
-        RECORD_END(nread);
-
-        reset_buffer();
-    }
-    */
-
-    *finished = 1;
-    return nread;
 }
 
 int mqttsn_stats_cmd(int argc, char **argv) {

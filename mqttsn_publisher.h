@@ -67,6 +67,11 @@ mqttsn_state_t mqttsn_publisher_state(void);
 #define MQTTSN_PUBLISH_INTERVAL 600 //1200
 #endif /* MQTTSN_PUBLISH_INTERVAL */
 
+#ifndef INTERVAL_SEC
+/* Buffer data generator interval (seconds)*/
+#define INTERVAL_SEC 360
+#endif /*INTERVAL_SEC*/
+
 #ifndef MQTTSN_MAX_TOPICS
 /* Max no of topics during a connection  */
 #define MQTTSN_MAX_TOPICS 8
