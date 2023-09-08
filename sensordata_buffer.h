@@ -1,3 +1,15 @@
+/**
+ * @file sensordata_buffer.h
+ * @brief Header file for managing and processing sensor data buffers.
+ *
+ * This header file provides declarations and documentation for functions and
+ * data structures related to managing and processing sensor data buffers. 
+ *
+ * @author Kevin Tony, Anuja Dadhich
+ * @date 08 September 2023
+ */
+
+
 #include "thread.h"
 #include "mutex.h"
 

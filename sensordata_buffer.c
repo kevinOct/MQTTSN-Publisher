@@ -1,3 +1,13 @@
+/**
+ * @file sensordata_buffer.c
+ * @briefFor managing and processing sensor data buffers.
+ *
+ * Provides functions related to managing and processing sensor data buffers. 
+ *
+ * @author Kevin Tony, Anuja Dadhich
+ * @date 08 September 2023
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
