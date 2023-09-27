@@ -25,6 +25,7 @@
 #include "at24mac.h"
 #include "sensor.h"
 
+#include "remote_command.h"
 #include "mqttsn_publisher.h"
 #include "report.h"
 #ifdef SNTP_SYNC
@@ -47,9 +48,9 @@
 #define EMCUTE_PORT         (1883U)
 #define EMCUTE_PRIO         (THREAD_PRIORITY_MAIN + 1)
 
-#define MQPUB_PRIO         (THREAD_PRIORITY_MAIN + 1)
+#define MQPUB_PRIO          (THREAD_PRIORITY_MAIN + 1)
 
-#define SENS_PRIO (THREAD_PRIORITY_MAIN + 1)
+#define SENS_PRIO           (THREAD_PRIORITY_MAIN + 1)
 
 #define NUMOFSUBS           (16U)
 
@@ -69,11 +70,17 @@ static char mqpub_stack[THREAD_STACKSIZE_DEFAULT + 384];
 static char emcute_stack[THREAD_STACKSIZE_DEFAULT + 128];
 static char sensordata_stack[THREAD_STACKSIZE_DEFAULT];
 
-static char sub_topicstr[MQPUB_TOPIC_LENGTH];
+static char sensor_stat_topicstr[MQPUB_TOPIC_LENGTH];
+static char controller_stat_topicstr[MQPUB_TOPIC_LENGTH];
 static char default_topicstr[MQPUB_TOPIC_LENGTH];
 static char default_basename[MQPUB_BASENAME_LENGTH];
 emcute_topic_t emcute_topic;
 static emcute_sub_t *subscriptions[MQTTSN_MAX_SUBSCRIPTIONS];
+
+static const shell_command_t remote_shell_commands[] = {
+    { "sensorstat", "Report sensor status", sensor_status },
+    { "contstat", "Report gateway controller status", controller_status }
+};
 
 static int client_id(char *id, int idlen, char *prefix) {
 
@@ -162,9 +169,9 @@ static void _init_default_topicstr(void) {
     (void) get_nodeid(nodeidstr, sizeof(nodeidstr));
     mqpub_init_topic(default_topicstr, sizeof(default_topicstr), nodeidstr, "/sensors");
 
-    // Create topic string for subscription topic
-    mqpub_init_topic(sub_topicstr, sizeof(default_topicstr), nodeidstr, "/broker_requests");
-
+    // Create topic string for subscription topics
+    mqpub_init_topic(sensor_stat_topicstr, sizeof(default_topicstr), nodeidstr, "/sensor_status");
+    mqpub_init_topic(controller_stat_topicstr, sizeof(default_topicstr), nodeidstr, "/controller_status");
 }
 
 size_t mqpub_init_basename(char *basename, size_t basenamelen, char *nodeid) {
@@ -447,9 +454,11 @@ again:
                 char *topicstr;
                 char *basename = default_basename;
 
-                if (report_gen_state == s_sensor_spec_report || report_gen_state == s_controller_spec_report)
-                {
-                    topicstr = sub_topicstr;
+                if (report_gen_state == s_sensor_spec_report) {
+                    topicstr = sensor_stat_topicstr;
+                }
+                else if (report_gen_state == s_controller_spec_report) {
+                    topicstr = controller_stat_topicstr;
                 }
                 else { topicstr = default_topicstr; }
 
@@ -468,7 +477,7 @@ again:
             if (subscribe) {
 
                 emcute_sub_t **sub;                
-                char *topicstr = sub_topicstr;
+                /*char *topicstr = sub_topicstr;
                 emcute_cb_t callback = _check_sub; // test example
                 
                 if ( mqpub_start_subscription(topicstr, callback) != 0) {
@@ -476,7 +485,10 @@ again:
                     mqpub_reset();
                     state = MQTTSN_NOT_CONNECTED;
                     return;
-                }
+                }**/
+
+                init_remote_commands(remote_shell_commands);
+
                 for (sub = &subscriptions[0]; sub <= &subscriptions[MQTTSN_MAX_SUBSCRIPTIONS-1]; sub++) {
                     if (*sub) {
                         if ((res = emcute_sub(*sub, EMCUTE_QOS_1)) < 0) {
@@ -763,5 +775,17 @@ int mqttsn_stats_cmd(int argc, char **argv) {
     printf("  publish: success %d, fail %d\n", st->publish_ok, st->publish_fail);
     printf("  reset: %d\n", st->reset);
     printf("  commreset: %d\n", st->commreset);
+    return 0;
+}
+
+int sensor_status(int argc, char **argv) {
+    (void) argc; (void) argv;
+    report_gen_state= s_sensor_spec_report;
+    return 0;
+}
+
+int controller_status(int argc, char **argv) {
+    (void) argc; (void) argv;
+    report_gen_state = s_controller_spec_report;
     return 0;
 }
