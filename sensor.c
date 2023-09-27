@@ -94,7 +94,7 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
 {
     char *s = (char *)buf;
     size_t l = len;
-    static sensor_report_state_t state = s_rn;
+    static sensor_report_state_t state = s_sensor;
     int nread = 0;
 
     *finished = 0;
