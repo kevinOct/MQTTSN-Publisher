@@ -101,5 +101,8 @@ void mqpub_report_ready(void);
 
 int dns_resolve_inetaddr(char *host, ipv6_addr_t *result);
 
+int sensor_status(int argc, char **argv);
+int controller_status(int argc, char **argv);
+
 #endif /* MQTTSN_PUBLISHER_T */
 
