@@ -13,8 +13,7 @@
 #include <stdlib.h>
 
 #include "sensordata_buffer.h"
-
-#define BUFFER_SIZE 10
+#include "anomaly_detection.h"
 
 
 CircularBuffer* buffer; 
@@ -68,6 +67,9 @@ void insert_measurement(Measurement new_measurement)
 
     if (is_circular_buffer_full())
     {
+        if (detect_anomaly(new_measurement.rn_measurement)) {
+            new_measurement.anomaly = true;
+        }
         // If buffer is full, re-initialize from the beginning
         buffer->tail = (buffer->tail + 1) % buffer->size;
         buffer->count--;
@@ -99,7 +101,7 @@ Measurement fetch_oldest_measurement(void) {
     if (is_circular_buffer_empty())
     {
         // Handle the case when the buffer is empty (returning a dummy Measurement)
-        Measurement dummy_measurement = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        Measurement dummy_measurement = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false};
         mutex_unlock(&buffer->mutex);
         return dummy_measurement;
     }
@@ -143,6 +145,7 @@ void print_measurement_at_index(int index)
         Measurement measurement = buffer->data[real_index];
 
        printf("Measurement at index, real_index: %d, %d, "
+       "Rn measurement=%d Bq/l, "
        "Radiation Measurement Interval=%d sec, "
        "Detection Limit=%d Bq/l, "
        "Temperature Measurement Interval=%d sec, "
@@ -152,6 +155,7 @@ void print_measurement_at_index(int index)
        "Water pH Measurement Interval=%d sec, "
        "Conductivity=%d µS/cm\n",
        index, real_index, 
+       (int)measurement.rn_measurement,
        (int)measurement.rn_measurement_interval,
        (int)measurement.rn_detection_limit,
        (int)measurement.temp_measurement_interval,
@@ -189,6 +193,7 @@ void print_buffer_contents(void)
 
         printf("index: %d, "
        "Radiation Measurement Interval=%d sec, "
+       "Rn measurement=%d Bq/l, "
        "Detection Limit=%d Bq/l, "
        "Temperature Measurement Interval=%d sec, "
        "Temperature Measurement Accuracy=%d°C, "
@@ -197,6 +202,7 @@ void print_buffer_contents(void)
        "Water pH Measurement Interval=%d sec, "
        "Conductivity=%d µS/cm\n",
        index, 
+       (int)measurement.rn_measurement,
        (int)measurement.rn_measurement_interval,
        (int)measurement.rn_detection_limit,
        (int)measurement.temp_measurement_interval,

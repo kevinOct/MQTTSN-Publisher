@@ -16,10 +16,12 @@
 #ifndef CIRCULAR_BUFFER_H
 #define CIRCULAR_BUFFER_H
 
+#define BUFFER_SIZE 144 // Store data for atleast one day
 
 // Define the Measurement struct
 typedef struct
 {
+    float rn_measurement;                       // Rn measurement (Bq/l)
     float rn_measurement_interval;              // sec
     float rn_detection_limit;                   // (Bq/l) becquerel per liter
     float temp_measurement_interval;            // sec
@@ -28,6 +30,7 @@ typedef struct
     float water_pressure_measurement_accuracy;  // (kPa) kiloPascal
     float water_ph_measurement_interval;        // sec
     float conductivity;                         // (µS/cm) microseimens per centimeter
+    bool anomaly;                               // anomaly check
 } Measurement;
 
 // Define the CircularBuffer struct
