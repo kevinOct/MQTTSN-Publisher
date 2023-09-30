@@ -21,14 +21,16 @@
 // Generate random measurements
 void generate_random_measurement(Measurement *measurement)
 {
-    measurement->rn_measurement_interval = (float)(rand() % 1000) + 100.0;     
-    measurement->rn_detection_limit = (float)(rand() % 30) + 1.0;         
+    measurement->rn_measurement = (float)(rand() % 1000) + 100.0;   
+    measurement->rn_measurement_interval = 360;  
+    measurement->rn_detection_limit = 1.0;         
     measurement->temp_measurement_interval = (float)(rand() % 1000) + 100.0;      
     measurement->temp_measurement_accuracy = (float)(rand() % 110) + 1.0;
     measurement->water_pressure_measurement_interval = (float)(rand() % 1000) + 100.0;
     measurement->water_pressure_measurement_accuracy = (float)(rand() % 10) + 1.0;
     measurement->water_ph_measurement_interval = (float)(rand() % 30) + 11.0;
     measurement->conductivity = (float)(rand() % 100) + 1.0;
+    measurement->anomaly = false;
 }
 
 
@@ -117,6 +119,7 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
                 PUTFMT(",{\"n\":\"sensor_name:\",\"v\":\"sensor_name_placeholder\"}");
                 PUTFMT(",{\"n\":\"sensor_id:\",\"v\":\"sensor_id_placeholder\"}");
                 PUTFMT(",{\"n\":\"sensor_time:\",\"t\":\"sensor_time_placeholder\"}");
+                PUTFMT("{\"n\":\"Anomaly\",\"u\":\"Boolean\",\"v\":%d},", measurement.anomaly);
                 PUTFMT("]}");
                 RECORD_END(nread);
                 state = s_rn;
@@ -124,6 +127,7 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
             case s_rn:
                 RECORD_START(s + nread, l - nread);
                 PUTFMT(",{\"n\":\"Rn parameters\",\"vj\":[");
+                PUTFMT("{\"n\":\"Rn measurement\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_measurement);
                 PUTFMT("{\"n\":\"Rn measurement interval\",\"u\":\"seconds\",\"v\":%d},", (int)measurement.rn_measurement_interval);
                 PUTFMT("{\"n\":\"Rn detection limit\",\"u\":\"(Bq/l)/becquerel per liter\",\"v\":%d},", (int)measurement.rn_detection_limit);
                 PUTFMT("]}");
