@@ -28,6 +28,8 @@
 #include "remote_command.h"
 #include "mqttsn_publisher.h"
 #include "report.h"
+#include "anomaly_detection.h"
+
 #ifdef SNTP_SYNC
 #include "sync_timestamp.h"
 #endif /* SNTP_SYNC */
@@ -79,7 +81,8 @@ static emcute_sub_t *subscriptions[MQTTSN_MAX_SUBSCRIPTIONS];
 
 static const shell_command_t remote_shell_commands[] = {
     { "sensorstat", "Report sensor status", sensor_status },
-    { "contstat", "Report gateway controller status", controller_status }
+    { "contstat", "Report gateway controller status", controller_status },
+    { "anmodify", "Modify anomaly detection parameters", modify_anomaly_param }
 };
 
 static int client_id(char *id, int idlen, char *prefix) {
@@ -426,7 +429,6 @@ void _check_sub(const emcute_topic_t *topic, void *data, size_t len) {
 }
 
 static void _publish_all(int subscribe) {
-    // int i = 0;
     uint32_t linger = 0;
 again:
     while (1) {
@@ -434,7 +436,6 @@ again:
         case MQTTSN_NOT_CONNECTED:
             mqpub_init();
             int res = mqpub_con(MQTTSN_GATEWAY_HOST, MQTTSN_GATEWAY_PORT);
-            //printf("mqpub_connect: %d\n", res);
             if (res != 0)
                 break;
             state = MQTTSN_CONNECTED;
@@ -637,11 +638,12 @@ static void *sensordata_thread(void *arg)
 {
     (void)arg;
 
-    if (initialize_circular_buffer() == 0)
+    while (initialize_circular_buffer() == 0)
     {
         // Handle the error, e.g., log an error message, exit the program, etc.
-        fprintf(stderr, "Buffer initialization failed. Exiting...\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Buffer initialization failed. Trying again...\n");
+        //exit(EXIT_FAILURE);
+        xtimer_usleep(5 * US_PER_SEC);
     }
 
     uint64_t sleep_us = INTERVAL_SEC * US_PER_SEC;
@@ -788,4 +790,33 @@ int controller_status(int argc, char **argv) {
     (void) argc; (void) argv;
     report_gen_state = s_controller_spec_report;
     return 0;
+}
+
+
+int modify_anomaly_param(int argc, char **argv) {
+    if (argc != 4) {
+        printf("Error: Usage - Enter mean (float), standard deviation (float), Z-threshold (float)\n");
+        return 1;
+    }
+
+    print_params();
+
+    char *endptr1, *endptr2, *endptr3;
+    double mean = strtod(argv[1], &endptr1);
+    double std_deviation = strtod(argv[2], &endptr2);
+    double z_threshold = strtod(argv[3], &endptr3);
+
+    if (*endptr1 != '\0' || *endptr2 != '\0' || *endptr3 != '\0') {
+        printf("Error: Invalid input. Please enter valid floating-point numbers.\n");
+        return 1;
+    }
+
+    if (modify_params(mean, std_deviation, z_threshold)) {
+        print_params();
+        printf("Anomaly detection parameters modified successfully.\n");
+        return 0;
+    } else {
+        printf("Error: Anomaly detection parameters not modified.\n");
+        return 1;
+    }
 }
