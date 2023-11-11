@@ -6,12 +6,11 @@
 #include "sensordata_buffer.h"
 #include "anomaly_detection.h"
 
-// #define BUFFER_SIZE 1440      Define the size of the circular buffer
 
 //static CircularBuffer* mem_buffer;
 
-float STANDARD_DEVIATION = 60.0;
-float MEAN = 100.0;
+float STANDARD_DEVIATION = 22.75; //60.0;
+float MEAN = 150.0; //100.0;
 float Z_THRESHOLD = 2.0;
 /*
 static double _calculate_mean(void) {
@@ -48,6 +47,18 @@ int modify_params(float mean, float sd, float z_threshold) {
     MEAN = mean;
     Z_THRESHOLD = z_threshold;
     return 1;
+}
+
+float get_sd(void) {
+    return STANDARD_DEVIATION;
+}
+
+float get_mean(void) {
+    return MEAN;
+}
+
+float get_z(void) {
+    return Z_THRESHOLD;
 }
 
 void print_params(void) {
