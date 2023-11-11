@@ -49,7 +49,7 @@ int initialize_circular_buffer(void);
 void free_circular_buffer(void);
 bool is_circular_buffer_empty(void);
 bool is_circular_buffer_full(void);
-void insert_measurement(Measurement new_measurement);
+int insert_measurement(Measurement new_measurement);
 Measurement fetch_oldest_measurement(void);
 void remove_oldest_measurement(void);
 void print_measurement_at_index(int index);
@@ -57,5 +57,8 @@ void print_buffer_contents(void);
 Measurement* retrieve_all_measurements(void);
 int get_buffer_count(void);
 void reset_buffer(void);
+int get_buffer_tail(void);
+void print_anomaly_at_index(int index);
+bool is_anomaly(int index);
 
 #endif /* CIRCULAR_BUFFER_H */

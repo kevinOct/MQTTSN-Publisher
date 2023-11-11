@@ -61,15 +61,16 @@ bool is_circular_buffer_full(void)
 }
 
 // Function to insert a new Measurement into the circular buffer
-void insert_measurement(Measurement new_measurement)
+int insert_measurement(Measurement new_measurement)
 {
     mutex_lock(&buffer->mutex);
 
+    if (detect_anomaly(new_measurement.rn_measurement)) {
+        new_measurement.anomaly = true;
+    }
+
     if (is_circular_buffer_full())
     {
-        if (detect_anomaly(new_measurement.rn_measurement)) {
-            new_measurement.anomaly = true;
-        }
         // If buffer is full, re-initialize from the beginning
         buffer->tail = (buffer->tail + 1) % buffer->size;
         buffer->count--;
@@ -82,8 +83,54 @@ void insert_measurement(Measurement new_measurement)
 
     mutex_unlock(&buffer->mutex);
 
-    //printf("Measurement at new insertion: Temperature=%d, Humidity=%d, Air Pressure=%d\n", (int)new_measurement.temperature, (int)new_measurement.humidity, (int)new_measurement.air_pressure);
+    return 0;
 }
+
+/*
+int insert_measurement_new(Measurement new_measurement)
+{
+    mutex_lock(&buffer->mutex);
+
+    if (is_circular_buffer_full())
+    {
+        int next_replaceable_index = buffer->tail;
+        bool found_replaceable = false;
+
+        // Find the next replaceable index with anomaly set to false
+        for (int i = 0; i < buffer->size; i++)
+        {
+            if (!buffer->data[next_replaceable_index].anomaly)
+            {
+                found_replaceable = true;
+                break;
+            }
+            next_replaceable_index = (next_replaceable_index + 1) % buffer->size;
+        }
+
+        // If a replaceable index with anomaly false is found, replace the measurement
+        if (found_replaceable)
+        {
+            buffer->data[next_replaceable_index] = new_measurement;
+        }
+        // If all measurements have anomaly true, do not insert the new data
+        else
+        {
+            mutex_unlock(&buffer->mutex);
+            return -1; // Indicate that insertion failed
+        }
+    }
+    else
+    {
+        // Insert the new_measurement at the head of the buffer
+        buffer->data[buffer->head] = new_measurement;
+        buffer->head = (buffer->head + 1) % buffer->size;
+        buffer->count++;
+    }
+
+    mutex_unlock(&buffer->mutex);
+
+    return 0; // Indicate successful insertion
+}*/
 
 int get_buffer_count(void) {
     mutex_lock(&buffer->mutex);
@@ -94,6 +141,39 @@ int get_buffer_count(void) {
     return count;
 }
 
+
+int get_buffer_tail(void) {
+    mutex_lock(&buffer->mutex);
+
+    int tail = buffer->tail;
+    mutex_unlock(&buffer->mutex);
+
+    return tail;
+}
+
+bool is_anomaly(int index) {
+    mutex_lock(&buffer->mutex);
+    if (index >= 0 && index < buffer->count)
+    {
+        //int real_index = (buffer->tail + index) % buffer->size;
+        Measurement measurement = buffer->data[index];
+
+        if (measurement.anomaly) {
+            mutex_unlock(&buffer->mutex);
+            return true;
+        }
+        else {
+            mutex_unlock(&buffer->mutex);
+            return false;
+        }
+    }
+    else
+    {
+        printf("Invalid index\n");
+        mutex_unlock(&buffer->mutex);
+        return false;
+    }
+}
 
 Measurement fetch_oldest_measurement(void) {
     mutex_lock(&buffer->mutex);
@@ -135,7 +215,39 @@ void free_circular_buffer(void)
 }
 
 
-// Function to print the Measurement at a specific index
+// Print Rn measurement and anomaly reading of a Measurement at a given index.
+void print_anomaly_at_index(int index) {
+
+    mutex_lock(&buffer->mutex);
+    if (index >= 0 && index < buffer->count)
+    {
+        //int real_index = (buffer->tail + index) % buffer->size;
+        Measurement measurement = buffer->data[index];
+
+        printf("Measurement at index: %d, "
+        "Rn measurement=%d Bq/l, ",
+        index, 
+        (int)measurement.rn_measurement);
+
+        if (measurement.anomaly) {
+            printf("Anomaly: True\n");
+        }
+        else { printf("Anomaly: False\n"); }
+
+        mutex_unlock(&buffer->mutex);
+        return;
+    }
+    else
+    {
+        printf("Invalid index\n");
+        mutex_unlock(&buffer->mutex);
+        return;
+    }
+
+}
+
+
+// Function to print the Measurement at a given index
 void print_measurement_at_index(int index)
 {
     mutex_lock(&buffer->mutex);
@@ -183,24 +295,29 @@ void print_buffer_contents(void)
 {
     mutex_lock(&buffer->mutex);
 
+    printf("Printing Buffer\n\n");
+    printf("Buffer Stats...\n");
+
     printf("count: %d\n", buffer->count);
     printf("head: %d\n", buffer->head);
     printf("tail: %d\n", buffer->tail);
+
+    printf("Printing Buffer Contents...\n");
     for (int i = 0; i < buffer->count; i++)
     {
         int index = (buffer->tail + i) % BUFFER_SIZE;
         Measurement measurement = buffer->data[index];
 
-        printf("index: %d, "
-       "Radiation Measurement Interval=%d sec, "
+        printf("At index: %d, "
        "Rn measurement=%d Bq/l, "
+       "Radiation Measurement Interval=%d sec, "
        "Detection Limit=%d Bq/l, "
        "Temperature Measurement Interval=%d sec, "
        "Temperature Measurement Accuracy=%d°C, "
        "Water Pressure Measurement Interval=%d sec, "
        "Water Pressure Measurement Accuracy=%d kPa, "
        "Water pH Measurement Interval=%d sec, "
-       "Conductivity=%d µS/cm\n",
+       "Conductivity=%d µS/cm",
        index, 
        (int)measurement.rn_measurement,
        (int)measurement.rn_measurement_interval,
@@ -211,6 +328,13 @@ void print_buffer_contents(void)
        (int)measurement.water_pressure_measurement_accuracy,
        (int)measurement.water_ph_measurement_interval,
        (int)measurement.conductivity);
+
+       if (measurement.anomaly)
+       {
+        printf("Anomaly: True\n");
+       }
+       else { printf("Anomaly: False\n"); }
+       
 
     }
     mutex_unlock(&buffer->mutex);
