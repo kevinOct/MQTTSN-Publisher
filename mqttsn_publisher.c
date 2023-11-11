@@ -596,23 +596,19 @@ static void *mqpub_thread(void *arg)
             _publish_all(0);
             break;
         case MSG_EVT_PERIODIC:
-            puts("periodic_publish");
 #ifdef SNTP_SYNC
             puts("sycn periodic");
             sync_periodic();
 #endif /* SNTP_SYNC */
 #ifdef DNS_CACHE_REFRESH
-            puts("A");
             dns_resolve_refresh();
 #endif /* DNS_CACHE_REFRESH */
             if (timeforperiodic()) {
-                puts("B");
                 _publish_all(1);
                 xtimer_now_timex(&last_periodic);
             }
             else 
             if (interval_secs < MQPUB_THREAD_MAX_INTERVAL_SEC) {
-                puts("C");
                 interval_secs <<= 1;
             }
             puts("D");
@@ -653,7 +649,7 @@ static void *sensordata_thread(void *arg)
 
     while (1)
     {
-        printf("Thread executed after %d seconds\n", INTERVAL_SEC);
+        //printf("Thread executed after %d seconds\n", INTERVAL_SEC);
         _start_data_simulation();
         xtimer_usleep(sleep_us);
     }
