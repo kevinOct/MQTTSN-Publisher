@@ -202,6 +202,22 @@ int sim7020cmd_topic(int argc, char **argv) {
   return mqpub_pubtopic(argv[1], (uint8_t*) argv[2], atoi(argv[3]));
 }
 
+/**
+ * Test 1
+ * Test whether the gateway controller can utilise the MQTT-SN
+    protocol to connect and publish a data packet to a specified topic.
+*/
+int test1(int argc, char **argv) {
+  if (sim7020cmd_topic(argc, argv) != 0) {
+    printf("Test 1: FAIL");
+    return 1;
+  }
+  else {
+    printf("Test 1: PASS");
+    return 0;
+  }
+}
+
 
 int sim7020_test(void);
 int sim7020cmd_test(int argc, char **argv) {
