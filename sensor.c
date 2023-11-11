@@ -19,7 +19,7 @@
 #include "report.h"
 
 // Generate random measurements
-void generate_random_measurement(Measurement *measurement)
+int generate_random_measurement(Measurement *measurement)
 {
     measurement->rn_measurement = (float)(rand() % 1000) + 100.0;   
     measurement->rn_measurement_interval = 360;  
@@ -31,21 +31,32 @@ void generate_random_measurement(Measurement *measurement)
     measurement->water_ph_measurement_interval = (float)(rand() % 30) + 11.0;
     measurement->conductivity = (float)(rand() % 100) + 1.0;
     measurement->anomaly = false;
+
+    return 0;
 }
 
 
 /**
  * Simulates data generation from the sensor by producing reports and storing it in the memory buffer.
  */
-void _start_data_simulation(void) {
+int _start_data_simulation(void) {
 
     Measurement new_measurement;
-    generate_random_measurement(&new_measurement);
 
-    insert_measurement(new_measurement);
+    if (generate_random_measurement(&new_measurement) != 0) {
+        printf("Error: New easurement not generated.\n");
+        return 1;
+    }
+
+    if (insert_measurement(new_measurement) != 0) {
+        printf("Error: New measurement not inserted.\n");
+        return 1;
+    }
 
     //printMeasurementAtIndex(circular_buffer, index);
-    print_buffer_contents(); 
+    //print_buffer_contents(); 
+
+    return 0;
 }
 
 
@@ -163,7 +174,6 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
             }
             
         }
-
         reset_buffer();
     }
 

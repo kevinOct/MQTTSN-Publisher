@@ -21,9 +21,9 @@ typedef enum {
     s_sensor, s_rn, s_temperature, s_water, s_conductivity} sensor_report_state_t;
 
 
-void generate_random_measurement(Measurement *measurement);
+int generate_random_measurement(Measurement *measurement);
 
-void _start_data_simulation(void);
+int _start_data_simulation(void);
 
 int sensor_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
 int sensor_spec_report(uint8_t *buf, size_t len, uint8_t *finished, char **topicp, char **basenamep);
