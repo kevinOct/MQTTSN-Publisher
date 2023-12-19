@@ -86,51 +86,6 @@ int insert_measurement(Measurement new_measurement)
     return 0;
 }
 
-/*
-int insert_measurement_new(Measurement new_measurement)
-{
-    mutex_lock(&buffer->mutex);
-
-    if (is_circular_buffer_full())
-    {
-        int next_replaceable_index = buffer->tail;
-        bool found_replaceable = false;
-
-        // Find the next replaceable index with anomaly set to false
-        for (int i = 0; i < buffer->size; i++)
-        {
-            if (!buffer->data[next_replaceable_index].anomaly)
-            {
-                found_replaceable = true;
-                break;
-            }
-            next_replaceable_index = (next_replaceable_index + 1) % buffer->size;
-        }
-
-        // If a replaceable index with anomaly false is found, replace the measurement
-        if (found_replaceable)
-        {
-            buffer->data[next_replaceable_index] = new_measurement;
-        }
-        // If all measurements have anomaly true, do not insert the new data
-        else
-        {
-            mutex_unlock(&buffer->mutex);
-            return -1; // Indicate that insertion failed
-        }
-    }
-    else
-    {
-        // Insert the new_measurement at the head of the buffer
-        buffer->data[buffer->head] = new_measurement;
-        buffer->head = (buffer->head + 1) % buffer->size;
-        buffer->count++;
-    }
-
-    mutex_unlock(&buffer->mutex);
-
-    return 0; // Indicate successful insertion
-}*/
 
 int get_buffer_count(void) {
     mutex_lock(&buffer->mutex);
@@ -387,6 +342,7 @@ Measurement* retrieve_all_measurements(void) {
 }
 
 
+// Buffer initialisatio test
 /*
 int main()
 {
@@ -411,3 +367,115 @@ int main()
 
     return 0;
 }*/
+
+/*
+int insert_measurement_new(Measurement new_measurement)
+{
+    mutex_lock(&buffer->mutex);
+
+    if (is_circular_buffer_full())
+    {
+        int next_replaceable_index = buffer->tail;
+        bool found_replaceable = false;
+
+        // Find the next replaceable index with anomaly set to false
+        for (int i = 0; i < buffer->size; i++)
+        {
+            if (!buffer->data[next_replaceable_index].anomaly)
+            {
+                found_replaceable = true;
+                break;
+            }
+            next_replaceable_index = (next_replaceable_index + 1) % buffer->size;
+        }
+
+        // If a replaceable index with anomaly false is found, replace the measurement
+        if (found_replaceable)
+        {
+            buffer->data[next_replaceable_index] = new_measurement;
+        }
+        // If all measurements have anomaly true, do not insert the new data
+        else
+        {
+            mutex_unlock(&buffer->mutex);
+            return -1; // Indicate that insertion failed
+        }
+    }
+    else
+    {
+        // Insert the new_measurement at the head of the buffer
+        buffer->data[buffer->head] = new_measurement;
+        buffer->head = (buffer->head + 1) % buffer->size;
+        buffer->count++;
+    }
+
+    mutex_unlock(&buffer->mutex);
+
+    return 0; // Indicate successful insertion
+}*/
+
+/**
+ * Disable automatic buffer allocation during this test
+*//*
+int test_buffer(int argc, char **argv) {
+    (void) argc, (void) **argv;
+
+    buffer = (CircularBuffer*)malloc(sizeof(CircularBuffer));
+
+    if (buffer == NULL)
+    {
+        printf("Buffer allocation failed 1");
+        return 0; // Return NULL to indicate failure
+    }
+    printf("Buffer allocated 1\n");
+
+    buffer->data = (Measurement*)malloc(sizeof(Measurement) * BUFFER_SIZE);
+
+    if (buffer->data == NULL)
+    {
+        printf("Buffer data allocation failed 1");
+        return 0; // Return NULL to indicate failure
+    }
+
+    printf("Buffer data allocated 1\n");
+
+    size_t total_memory = sizeof(CircularBuffer);
+    printf("size of circular buffer: %u\n", total_memory);
+
+
+    total_memory = sizeof(Measurement);
+    printf("size of Measurement: %u\n", total_memory);
+
+    total_memory = sizeof(Measurement) * BUFFER_SIZE;
+    printf("size of Measurement * buffersize: %u\n", total_memory);
+    
+ 
+    free(buffer->data);
+    free(buffer);
+
+
+    buffer = (CircularBuffer*)malloc(sizeof(CircularBuffer));
+
+    if (buffer == NULL)
+    {
+        printf("Buffer allocation failed 2");
+        return 0; // Return NULL to indicate failure
+    }
+
+    printf("Buffer allocated 2\n");
+    buffer->data = (Measurement*)malloc(sizeof(Measurement) * BUFFER_SIZE);
+
+    if (buffer->data == NULL)
+    {
+        printf("Buffer data allocation failed 2");
+        return 0; // Return NULL to indicate failure
+    }
+
+    printf("Buffer data allocated 2\n");
+
+    free(buffer->data);
+    free(buffer);
+
+    return 1;
+}*/
+
