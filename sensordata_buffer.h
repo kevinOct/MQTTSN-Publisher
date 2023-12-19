@@ -16,7 +16,7 @@
 #ifndef CIRCULAR_BUFFER_H
 #define CIRCULAR_BUFFER_H
 
-#define BUFFER_SIZE 144 // Store data for atleast one day
+#define BUFFER_SIZE 144 // Store data for atleast one day (144) max 400?
 
 // Define the Measurement struct
 typedef struct
