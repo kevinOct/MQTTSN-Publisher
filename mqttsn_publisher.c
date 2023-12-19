@@ -477,17 +477,7 @@ again:
             } while (!finished);
             if (subscribe) {
 
-                emcute_sub_t **sub;                
-                /*char *topicstr = sub_topicstr;
-                emcute_cb_t callback = _check_sub; // test example
-                
-                if ( mqpub_start_subscription(topicstr, callback) != 0) {
-                    puts("No subscription");
-                    mqpub_reset();
-                    state = MQTTSN_NOT_CONNECTED;
-                    return;
-                }**/
-
+                emcute_sub_t **sub;
                 init_remote_commands(remote_shell_commands);
 
                 for (sub = &subscriptions[0]; sub <= &subscriptions[MQTTSN_MAX_SUBSCRIPTIONS-1]; sub++) {
