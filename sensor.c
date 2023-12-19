@@ -180,3 +180,128 @@ int sensor_report(uint8_t *buf, size_t len, uint8_t *finished,
     *finished = 1;
     return nread;
 }
+
+/*
+int sensor_report_test(uint8_t *buf, size_t len, uint8_t *finished,
+                  __attribute__((unused)) char **topicp, __attribute__((unused)) char **basenamep)
+{
+    char *s = (char *)buf;
+    size_t l = len;
+    //static sensor_report_state_t state = s_sensor;
+    int nread = 0;
+
+    *finished = 0;
+
+    
+    if (buf != NULL) {
+
+        //print_buffer_contents();
+
+        Measurement measurement;
+        while (get_buffer_count() != 0)
+        {
+            measurement = fetch_oldest_measurement();
+
+            RECORD_START(s + nread, l - nread);
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+            
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.rn_detection_limit);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.temp_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_ph_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_accuracy);
+            PUTFMT("{%d},", (int)measurement.water_pressure_measurement_interval);
+            PUTFMT("{%d},", (int)measurement.conductivity);
+
+            PUTFMT("{%d},", measurement.anomaly);
+            PUTFMT("{%d},", (int)measurement.rn_measurement);
+            PUTFMT("{%d},", (int)measurement.rn_measurement_interval);
+            RECORD_END(nread);
+            remove_oldest_measurement();
+            
+            
+        }
+        reset_buffer();
+    }
+
+    *finished = 1;
+    return nread;
+}*/
