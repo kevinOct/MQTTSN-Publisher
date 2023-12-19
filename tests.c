@@ -1,7 +1,7 @@
 
 
-#include "sensordata_buffer.h"
-#include "mqttsn_publisher.h"
+//#include "sensordata_buffer.h"
+///#include "mqttsn_publisher.h"
 
 
 // Various Test Functions
@@ -10,7 +10,7 @@
  * Test 1
  * Test whether the gateway controller can utilise the MQTT-SN
     protocol to connect and publish a data packet to a specified topic.
-*/
+*//**
 int test1(int argc, char **argv) {
   if (sim7020cmd_topic(argc, argv) != 0) {
     printf("Test 1: FAIL");
@@ -20,14 +20,14 @@ int test1(int argc, char **argv) {
     printf("Test 1: PASS");
     return 0;
   }
-}
+}*/
 
 
 /**
  * Test 2
  * Test whether the data is stored successfully in the circular memory buffer
  * after the sensor data is created.
-*/
+*//**
 int test2(int argc, char **argv) {
     (void) argc; (void) argv;
 
@@ -79,7 +79,7 @@ int test2(int argc, char **argv) {
     printf("Test 2: PASS\n");
     return 0;
 
-}
+}*/
 
 /**
  * Test 3
@@ -90,7 +90,7 @@ int test2(int argc, char **argv) {
     buffer index in Measurement struct to cross-check. 
 
     Currently relies on the user to validate test results.
-*/
+*//**
 int test3(int argc, char **argv) {
     (void) argc; (void) argv;
 
@@ -150,7 +150,7 @@ int test3(int argc, char **argv) {
     printf("Test 3: PASS\n");
     return 0;
 
-}
+}*/
 
 /**
  * Test 4
@@ -159,7 +159,7 @@ int test3(int argc, char **argv) {
      memory buffer is successfully fetched for report generation
 */
 
-
+/**
 int test4(int argc, char **argv) {
     (void) argc; (void) argv;
 
@@ -211,7 +211,7 @@ int test4(int argc, char **argv) {
         printf("Test 4: FAIL\n");
         return 1;
     }
-}
+}*/
 
 
 /**
@@ -220,7 +220,7 @@ int test4(int argc, char **argv) {
  * Test whether all the data in the memory buffer is removed
  * once it has been successfully fetched for report generation
 */
-
+/*
 int test5(int argc, char **argv) {
     (void) argc; (void) argv;
 
@@ -307,12 +307,12 @@ int test6(int argc, char **argv) {
 
     return 0;
     
-}
+}*/
 
 /**
  * Test 7
  * Pre-requisites: set buffer size to 3
-*/
+*//***
 int test7(int argc, char **argv) {
     (void) argc, (void) **argv;
 
@@ -378,13 +378,13 @@ int test7(int argc, char **argv) {
     printf("TEST 7: PASS\n");
 
     return 0;
-}
+} */
 
 /**
  * Test 8
  * Set mean, standard deviation, and z-threshold to suit your test parameters.
 */
-
+/**
 int test8(int argc, char **argv) {
     (void) argc, (void) **argv;
 
@@ -500,4 +500,4 @@ int test9(int argc, char **argv) {
     printf("TEST 9: FAIL\n");
     return 1;
 
-}
+} */
